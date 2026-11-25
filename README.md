@@ -2,7 +2,7 @@
 
 Sign in to AWS through Okta from Windows (WSL) without retyping your details every time.
 
-- **AWS Login**: signs you in to an AWS environment (dev, test, mgmt, prod, …) so the AWS CLI works.
+- **AWS Login**: signs you in to an AWS environment (dev, mgmt, prod, …) so the AWS CLI works.
 - **AWS Database Password**: signs you in, then gives you a 15-minute database password
   (RDS IAM token) and copies it to the clipboard.
 

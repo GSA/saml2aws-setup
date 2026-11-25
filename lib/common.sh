@@ -11,7 +11,7 @@ PASSWORD_DIR=$STATE_DIR/passwords
 TEAM_FILE=${SAMLLOGIN_TEAM:-$STATE_DIR/team.conf}
 TEAM_FILE_NAME=saml2aws-team.conf
 REGION=${AWS_REGION:-us-east-1}
-DEFAULT_ENVIRONMENTS=${SAMLLOGIN_ENVIRONMENTS:-"dev test mgmt prod"}
+DEFAULT_ENVIRONMENTS=${SAMLLOGIN_ENVIRONMENTS:-"dev mgmt prod"}
 
 say() { printf '%s\n' "$*" >&2; }
 die() { say "$*"; exit 1; }

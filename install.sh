@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install saml2aws and the AWS CLI, set up your Okta environments, and add Desktop shortcuts.
-# Usage: ./install.sh [--team FILE] [ENVIRONMENT...]   (default: the team file's, else dev test mgmt prod)
+# Usage: ./install.sh [--team FILE] [ENVIRONMENT...]   (default: the team file's, else dev mgmt prod)
 #   --team FILE      shared Okta links and database hosts (default: saml2aws-team.conf here or in Downloads)
 #   --no-shortcuts   skip the Windows Desktop shortcuts
 set -euo pipefail
