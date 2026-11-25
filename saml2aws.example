@@ -1,0 +1,27 @@
+# Example ~/.saml2aws. You don't need to copy this: install.sh and the login scripts
+# write ~/.saml2aws for you from the Okta links you paste. The links and username are
+# personal; don't share your ~/.saml2aws or copy someone else's.
+#
+# One section per environment. The section name is also the AWS CLI profile name.
+
+[dev]
+name                 = dev
+url                  = https://<your-org>.okta.com/home/amazon_aws/<your-dev-app-id>/272
+username             = <you@agency.gov>
+provider             = Okta
+mfa                  = Auto
+aws_urn              = urn:amazon:webservices
+aws_session_duration = 28800
+aws_profile          = dev
+region               = us-east-1
+
+[prod]
+name                 = prod
+url                  = https://<your-org>.okta.com/home/amazon_aws/<your-prod-app-id>/272
+username             = <you@agency.gov>
+provider             = Okta
+mfa                  = Auto
+aws_urn              = urn:amazon:webservices
+aws_session_duration = 3600
+aws_profile          = prod
+region               = us-east-1
