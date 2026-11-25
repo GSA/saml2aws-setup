@@ -67,3 +67,7 @@ the saved one.
   `aws_session_duration` in `~/.saml2aws` if your role allows something else.
 - The installer downloads the latest [saml2aws](https://github.com/Versent/saml2aws) release
   and checks its published SHA-256 before installing it to `~/.local/bin`.
+
+## License
+
+Public domain under [CC0 1.0](LICENSE).
