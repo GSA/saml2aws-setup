@@ -1,3 +1,4 @@
 .saml2aws
 *.dpapi
 hosts
+saml2aws-team.conf

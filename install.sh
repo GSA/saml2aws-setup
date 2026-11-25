@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install saml2aws and the AWS CLI, set up your Okta environments, and add Desktop shortcuts.
-# Usage: ./install.sh [ENVIRONMENT...]   (default: dev test mgmt prod)
+# Usage: ./install.sh [--team FILE] [ENVIRONMENT...]   (default: the team file's, else dev test mgmt prod)
+#   --team FILE      shared Okta links and database hosts (default: saml2aws-team.conf here or in Downloads)
 #   --no-shortcuts   skip the Windows Desktop shortcuts
 set -euo pipefail
 here=$(dirname "$(readlink -f "$0")")
@@ -8,15 +9,18 @@ here=$(dirname "$(readlink -f "$0")")
 source "$here/lib/common.sh"
 
 shortcuts=yes
+team=
 envs=()
-for arg in "$@"; do
-  case $arg in
+while (($#)); do
+  case $1 in
     --no-shortcuts) shortcuts=no ;;
-    -h|--help) sed -n '2,5p' "$0"; exit 0 ;;
-    *) valid_env_name "$arg" || die "Not an environment name: $arg"; envs+=("$arg") ;;
+    --team) [[ -n ${2:-} ]] || die "--team needs a file"; team=$2; shift ;;
+    --team=*) team=${1#*=} ;;
+    -h|--help) sed -n '2,6p' "$0"; exit 0 ;;
+    *) valid_env_name "$1" || die "Not an environment name: $1"; envs+=("$1") ;;
   esac
+  shift
 done
-((${#envs[@]})) || read -r -a envs <<<"$DEFAULT_ENVIRONMENTS"
 
 [[ $(uname -s) == Linux ]] || die "This installer supports Linux and WSL only."
 [[ $EUID -ne 0 ]] || die "Run as your normal user, not with sudo; the settings are per user."
@@ -75,11 +79,42 @@ fi
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$app/awslogin.sh" "$HOME/.local/bin/awslogin.sh"
 ln -sfn "$app/samllogin.sh" "$HOME/.local/bin/samllogin.sh"
-say "Installed awslogin.sh and samllogin.sh in ~/.local/bin."
+# Also link them in your home folder, so ~/awslogin.sh works without the clone.
+for script in awslogin.sh samllogin.sh; do
+  if [[ -e $HOME/$script && ! -L $HOME/$script ]]; then
+    say "Left your existing ~/$script alone (not a link)."
+  else
+    ln -sfn "$app/$script" "$HOME/$script"
+  fi
+done
+say "Installed awslogin.sh and samllogin.sh (in ~ and ~/.local/bin). You can delete the downloaded folder."
+
+# ---- team defaults -------------------------------------------------------------
+if [[ -z $team ]]; then
+  downloads=
+  # shellcheck disable=SC2016  # PowerShell variable
+  if profile=$(ps_run '$env:USERPROFILE' </dev/null 2>/dev/null) && [[ -n $profile ]]; then
+    downloads=$(wslpath -u "$profile\\Downloads" 2>/dev/null || true)
+  fi
+  for candidate in "$here/$TEAM_FILE_NAME" ${downloads:+"$downloads/$TEAM_FILE_NAME"}; do
+    [[ -f $candidate ]] && { team=$candidate; break; }
+  done
+fi
+if [[ -n $team ]]; then
+  [[ -f $team ]] || die "Team file not found: $team"
+  [[ -n $(ini_sections "$team") ]] || die "No [environment] sections in $team"
+  mkdir -p "$STATE_DIR" && chmod 700 "$STATE_DIR"
+  if [[ $(readlink -f "$team") != $(readlink -f "$TEAM_FILE" 2>/dev/null) ]]; then
+    install -m 600 "$team" "$TEAM_FILE"
+  fi
+  say "Using team settings from $team."
+fi
+((${#envs[@]})) || mapfile -t envs < <(ini_sections "$TEAM_FILE")
+((${#envs[@]})) || read -r -a envs <<<"$DEFAULT_ENVIRONMENTS"
 
 # ---- environments ------------------------------------------------------------
 say ""
-say "Set up your environments. Use your own Okta links; never copy someone else's ~/.saml2aws."
+say "Set up your environments."
 for env in "${envs[@]}"; do
   if [[ -n $(ini_get "$env" url) && -n $(ini_get "$env" username) ]]; then
     say "  $env: already set up."
@@ -93,7 +128,7 @@ done
 
 # ---- Windows Desktop shortcuts -------------------------------------------------
 if [[ $shortcuts == yes && -n ${WSL_DISTRO_NAME:-} ]] && powershell_exe >/dev/null; then
-  desktop_win=$(ps_run '[Environment]::GetFolderPath("Desktop")')
+  desktop_win=$(ps_run '[Environment]::GetFolderPath("Desktop")' </dev/null)
   desktop=$(wslpath -u "$desktop_win" 2>/dev/null || true)
   if [[ -n ${SAMLLOGIN_DESKTOP:-} ]]; then desktop=$SAMLLOGIN_DESKTOP desktop_win=$SAMLLOGIN_DESKTOP; fi
   if [[ -d $desktop ]]; then

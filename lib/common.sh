@@ -8,6 +8,8 @@ SAML_CONFIG=${SAML2AWS_CONFIGFILE:-$HOME/.saml2aws}
 STATE_DIR=${SAMLLOGIN_STATE:-${XDG_CONFIG_HOME:-$HOME/.config}/samllogin}
 HOSTS_FILE=${SAMLLOGIN_HOSTS:-$STATE_DIR/hosts}
 PASSWORD_DIR=$STATE_DIR/passwords
+TEAM_FILE=${SAMLLOGIN_TEAM:-$STATE_DIR/team.conf}
+TEAM_FILE_NAME=saml2aws-team.conf
 REGION=${AWS_REGION:-us-east-1}
 DEFAULT_ENVIRONMENTS=${SAMLLOGIN_ENVIRONMENTS:-"dev test mgmt prod"}
 
@@ -25,10 +27,10 @@ have_tty() { { : </dev/tty; } 2>/dev/null; }
 
 # ---- ~/.saml2aws ----------------------------------------------------------
 
-# ini_get ENV KEY: value of KEY in section [ENV] (the file may start with a UTF-8 BOM).
-ini_get() {
-  [[ -f $SAML_CONFIG ]] || return 0
-  awk -v sec="[$1]" -v key="$2" '
+# ini_read FILE SECTION KEY: value of KEY in [SECTION] (the file may start with a UTF-8 BOM).
+ini_read() {
+  [[ -f $1 ]] || return 0
+  awk -v sec="[$2]" -v key="$3" '
     { sub(/^\xef\xbb\xbf/, ""); line = $0; gsub(/^[ \t]+|[ \t\r]+$/, "", line) }
     line ~ /^\[/ { insec = (line == sec); next }
     insec {
@@ -36,12 +38,20 @@ ini_get() {
       k = substr(line, 1, i - 1); v = substr(line, i + 1)
       gsub(/[ \t]+$/, "", k); gsub(/^[ \t]+/, "", v)
       if (k == key) { print v; exit }
-    }' "$SAML_CONFIG"
+    }' "$1"
 }
 
+ini_sections() {
+  [[ -f $1 ]] || return 0
+  sed 's/^\xef\xbb\xbf//; s/\r$//' "$1" | sed -n 's/^\[\([A-Za-z0-9_-]*\)\][[:space:]]*$/\1/p'
+}
+
+# ini_get ENV KEY: from ~/.saml2aws.  team_get ENV KEY: from the shared team file.
+ini_get() { ini_read "$SAML_CONFIG" "$1" "$2" | awk '{ sub(/\r$/, ""); print }'; }
+team_get() { ini_read "$TEAM_FILE" "$1" "$2" | awk '{ sub(/\r$/, ""); print }'; }
+
 configured_envs() {
-  [[ -f $SAML_CONFIG ]] || return 0
-  sed 's/^\xef\xbb\xbf//' "$SAML_CONFIG" | sed -n 's/^\[\([A-Za-z0-9_-]*\)\][[:space:]]*$/\1/p'
+  { ini_sections "$SAML_CONFIG"; ini_sections "$TEAM_FILE"; } | awk '!seen[$0]++'
 }
 
 valid_env_name() { [[ $1 =~ ^[A-Za-z0-9_-]+$ ]]; }
@@ -107,6 +117,7 @@ ensure_env() {
   url=$(ini_get "$env" url)
   user=$(ini_get "$env" username)
   [[ -n $url && -n $user ]] && return 0
+  [[ -n $url ]] || url=$(team_get "$env" url)
   have_tty || die "Environment \"$env\" is not set up yet; run this in a terminal once to set it up."
   [[ -n $url ]] || url=$(prompt_url "$env")
   [[ -n $user ]] || user=$(prompt_username "$env")

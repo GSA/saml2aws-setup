@@ -12,8 +12,19 @@ saved_host() {
   grep -m1 "^$1=" "$HOSTS_FILE" | cut -d= -f2- || true
 }
 
+# Your own saved hostname wins; otherwise use the team file's.
+default_host() {
+  local h
+  h=$(saved_host "$1"); [[ -n $h ]] || h=$(team_get "$1" db_host)
+  printf '%s' "$h"
+}
+
 if [[ ${1:-} == --list ]]; then
-  if [[ -s $HOSTS_FILE ]]; then sed 's/=/\t/' "$HOSTS_FILE"; else say "No saved hostnames ($HOSTS_FILE)."; fi
+  found=
+  for e in $(configured_envs); do
+    h=$(default_host "$e"); [[ -n $h ]] && { printf '%s\t%s\n' "$e" "$h"; found=1; }
+  done
+  [[ -n $found ]] || say "No saved hostnames ($HOSTS_FILE)."
   exit 0
 fi
 
@@ -23,9 +34,9 @@ port=${DB_PORT:-3306}
 ensure_env "$env"
 
 # The database hostname differs per environment and must be the proxied endpoint.
-# Ask once, then offer the saved one (Enter keeps it). DB_HOST skips the prompt.
+# Offer the saved or team one (Enter keeps it); ask if there is none. DB_HOST skips the prompt.
 db_host=${DB_HOST:-}
-remembered=$(saved_host "$env")
+remembered=$(default_host "$env")
 if [[ -z $db_host ]]; then
   if ! have_tty; then
     [[ -n $remembered ]] || die "No terminal to ask on; set DB_HOST to the database hostname for $env."
@@ -50,7 +61,7 @@ login "$env"
 token=$(aws rds generate-db-auth-token --hostname "$db_host" --port "$port" \
   --username "$db_user" --region "$REGION" --profile "$env" --no-cli-pager)
 
-# Remember the hostname only once it has produced a token.
+# Remember a hostname you typed only once it has produced a token.
 if [[ $db_host != "$remembered" ]]; then
   mkdir -p "$STATE_DIR" && chmod 700 "$STATE_DIR"
   tmp=$(mktemp "$HOSTS_FILE.XXXXXX")
