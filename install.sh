@@ -116,7 +116,7 @@ fi
 say ""
 say "Set up your environments."
 for env in "${envs[@]}"; do
-  if [[ -n $(ini_get "$env" url) && -n $(ini_get "$env" username) ]]; then
+  if [[ -n $(ini_get "$env" url) ]] && valid_username "$(ini_get "$env" username)"; then
     say "  $env: already set up."
     continue
   fi

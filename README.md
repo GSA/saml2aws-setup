@@ -35,7 +35,8 @@ You still approve the Okta Verify prompt on your phone each time.
    wsl bash -lc "rm -rf /tmp/saml2aws-setup; git clone -q https://github.com/GSA/saml2aws-setup.git /tmp/saml2aws-setup && /tmp/saml2aws-setup/install.sh"
    ```
 
-4. For each environment, answer **Y** and enter your Okta username. Without a team file you're
+4. For each environment, answer **Y** and enter your Okta username: **always your GSA email**
+   (`first.last@gsa.gov`), never a personal address. Anything else is refused. Without a team file you're
    also asked for the Okta link: open your Okta dashboard, right-click the AWS tile for that
    environment, and choose **Copy link**.
 5. Two shortcuts appear on your Desktop: **AWS Login** and **AWS Database Password**.
@@ -80,6 +81,8 @@ the saved one.
 | To | Do |
 | --- | --- |
 | Change an environment's Okta link or username | Delete its section from `~/.saml2aws`; you'll be asked again |
+| Fix a non-GSA username saved earlier | Nothing: it's refused on next use and you're asked for your GSA email |
+| Use another email domain | `export SAMLLOGIN_EMAIL_DOMAIN=example.gov` (empty allows any) |
 | Forget a saved password | `rm ~/.config/samllogin/passwords/<env>.dpapi` |
 | Never save passwords | `export SAMLLOGIN_NO_SAVE=1` |
 | Change a database hostname | Type a new one at the prompt (Enter keeps the saved or team one) |

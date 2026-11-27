@@ -12,6 +12,8 @@ TEAM_FILE=${SAMLLOGIN_TEAM:-$STATE_DIR/team.conf}
 TEAM_FILE_NAME=saml2aws-team.conf
 REGION=${AWS_REGION:-us-east-1}
 DEFAULT_ENVIRONMENTS=${SAMLLOGIN_ENVIRONMENTS:-"dev mgmt prod"}
+# Okta usernames must be an email in this domain; set SAMLLOGIN_EMAIL_DOMAIN= (empty) to allow any.
+EMAIL_DOMAIN=${SAMLLOGIN_EMAIL_DOMAIN-gsa.gov}
 
 say() { printf '%s\n' "$*" >&2; }
 die() { say "$*"; exit 1; }
@@ -87,20 +89,33 @@ prompt_url() {
   printf '%s' "$url"
 }
 
-last_username() { [[ -f $STATE_DIR/username ]] && cat "$STATE_DIR/username"; return 0; }
+valid_username() {
+  [[ -z $EMAIL_DOMAIN ]] && [[ -n $1 ]] && return 0
+  local local_part=${1%@*}
+  [[ ${1,,} == *@"${EMAIL_DOMAIN,,}" && -n $local_part && $local_part != *[@[:space:]]* ]]
+}
+
+last_username() {
+  local last
+  [[ -f $STATE_DIR/username ]] && last=$(<"$STATE_DIR/username")
+  if valid_username "${last:-}"; then printf '%s' "$last"; fi
+  return 0
+}
 
 prompt_username() {
-  local env=$1 last user
+  local env=$1 last user hint="your GSA email, e.g. first.last@$EMAIL_DOMAIN"
+  [[ -n $EMAIL_DOMAIN ]] || hint="usually your work email"
   last=$(last_username)
   while :; do
     if [[ -n $last ]]; then
-      read -r -p "Okta username for $env [$last]: " user </dev/tty
+      read -r -p "Okta username for $env ($hint) [$last]: " user </dev/tty
       user=${user:-$last}
     else
-      read -r -p "Okta username for $env (usually your email): " user </dev/tty
+      read -r -p "Okta username for $env ($hint): " user </dev/tty
     fi
     user=${user//[[:space:]]/}
-    [[ -n $user ]] && break
+    valid_username "$user" && break
+    say "  That isn't a @$EMAIL_DOMAIN address. Use your GSA email, not a personal one."
   done
   printf '%s' "$user"
 }
@@ -116,6 +131,10 @@ ensure_env() {
   valid_env_name "$env" || die "Environment names may only use letters, digits, - and _: $env"
   url=$(ini_get "$env" url)
   user=$(ini_get "$env" username)
+  if [[ -n $user ]] && ! valid_username "$user"; then
+    say "The saved $env username ($user) isn't a @$EMAIL_DOMAIN address; enter your GSA email."
+    user=
+  fi
   [[ -n $url && -n $user ]] && return 0
   [[ -n $url ]] || url=$(team_get "$env" url)
   have_tty || die "Environment \"$env\" is not set up yet; run this in a terminal once to set it up."
