@@ -68,6 +68,7 @@ configure_env() {
     --idp-account "$env" --profile "$env" \
     --idp-provider Okta --mfa "${SAML2AWS_MFA:-Auto}" \
     --region "$REGION" --session-duration "$duration" \
+    --disable-sessions \
     --url "$url" --username "$user" 2>&1); then
     say "$out"
     die "Could not save the $env settings."
@@ -135,7 +136,12 @@ ensure_env() {
     say "The saved $env username ($user) isn't a @$EMAIL_DOMAIN address; enter your GSA email."
     user=
   fi
-  [[ -n $url && -n $user ]] && return 0
+  if [[ -n $url && -n $user ]]; then
+    # Okta now refuses saml2aws's session API with HTTP 403 after MFA; turn it off for older setups.
+    [[ $(ini_get "$env" disable_sessions) == true ]] ||
+      configure_env "$env" "$url" "$user" "$(ini_get "$env" aws_session_duration)"
+    return 0
+  fi
   [[ -n $url ]] || url=$(team_get "$env" url)
   have_tty || die "Environment \"$env\" is not set up yet; run this in a terminal once to set it up."
   [[ -n $url ]] || url=$(prompt_url "$env")
@@ -230,7 +236,7 @@ password_forget() {
 # ---- login --------------------------------------------------------------------
 
 saml_login() {
-  SAML2AWS_PASSWORD=$2 saml2aws login --skip-prompt \
+  SAML2AWS_PASSWORD=$2 SAML2AWS_OKTA_DISABLE_SESSIONS=true saml2aws login --skip-prompt \
     --config "$SAML_CONFIG" --idp-account "$1" --profile "$1" \
     --username "$(ini_get "$1" username)" >&2
 }

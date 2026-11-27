@@ -100,6 +100,9 @@ the saved one.
 
 ## Notes
 
+- Okta sessions are turned off (`disable_sessions = true`): Okta now answers saml2aws's session
+  call with HTTP 403 after you approve the push. Older setups are switched over on next use.
+
 - Outside WSL, passwords are saved in the desktop keyring if `secret-tool` is installed;
   otherwise you're asked each time.
 - Sessions last 8 hours, or 1 hour for environments whose name starts with `prod`. Change
