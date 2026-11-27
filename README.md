@@ -29,6 +29,12 @@ You still approve the Okta Verify prompt on your phone each time.
    git clone -q https://github.com/GSA/saml2aws-setup.git /tmp/saml2aws-setup && /tmp/saml2aws-setup/install.sh
    ```
 
+   Or, from **PowerShell** (WSL must already be installed):
+
+   ```powershell
+   wsl bash -lc "rm -rf /tmp/saml2aws-setup; git clone -q https://github.com/GSA/saml2aws-setup.git /tmp/saml2aws-setup && /tmp/saml2aws-setup/install.sh"
+   ```
+
 4. For each environment, answer **Y** and enter your Okta username. Without a team file you're
    also asked for the Okta link: open your Okta dashboard, right-click the AWS tile for that
    environment, and choose **Copy link**.
@@ -44,6 +50,17 @@ left in your home folder. To update, run the same line again (`rm -rf /tmp/saml2
 Okta AWS tile link, which is the same for everyone in your Okta org) and optional `db_host`
 (the RDS proxy endpoint). Share the real file privately, not in this public repo. Pass it
 explicitly with `install.sh --team FILE`; rerun that to pick up changes.
+
+To produce it from a setup that already works for you:
+
+```bash
+./make-team-file.sh --title "My team settings" dev=<dev-proxy-host> prod=<prod-proxy-host>
+```
+
+It writes `saml2aws-team.conf` here (ignored by git) with the Okta link of every environment in
+your `~/.saml2aws`. Database hosts come from the `ENV=HOST` arguments, else your saved hosts,
+else your installed team file. Usernames and passwords are never copied. Check the file, then
+share it privately (Teams, OneDrive) for others to save to their Downloads folder.
 
 ## Use
 
@@ -68,6 +85,15 @@ the saved one.
 | Change a database hostname | Type a new one at the prompt (Enter keeps the saved or team one) |
 
 `saml2aws.example` shows what `~/.saml2aws` looks like, with placeholders.
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| `install.sh` | Installs saml2aws, the scripts, the team file, home-folder links and Desktop shortcuts |
+| `awslogin.sh`, `samllogin.sh`, `lib/common.sh` | The login scripts |
+| `make-team-file.sh` | Builds `saml2aws-team.conf` from your working setup |
+| `saml2aws-team.example.conf`, `saml2aws.example` | Formats, with placeholders |
 
 ## Notes
 
